@@ -1,29 +1,29 @@
-package com.cp.projects.todo.model.table;
+package com.cp.projects.todo.model.dto;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.cp.projects.todo.model.table.User;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Entity
-@Table(name = "user")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder(toBuilder = true)
-public class User {
-  @Id
-  @GeneratedValue
+public class UserDTO {
   private UUID userId;
   private String username;
-  private String password;
   private String email;
   private LocalDateTime createDate;
+
+  public UserDTO(User db) {
+    this.userId = db.getUserId();
+    this.username = db.getUsername();
+    this.email = db.getEmail();
+    this.createDate = db.getCreateDate();
+  }
 }
