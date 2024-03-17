@@ -11,13 +11,13 @@ import com.cp.projects.todo.model.dto.UserDTO;
 import com.cp.projects.todo.service.UserService;
 
 @RestController
-@RequestMapping("user")
+@RequestMapping("v1/users")
 public class UserController {
 
   @Autowired
   private UserService userService;
 
-  @GetMapping("/")
+  @GetMapping({"/", ""})
   public List<UserDTO> findAll() {
     return userService.findAll();
   }

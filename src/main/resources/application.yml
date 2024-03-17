@@ -1,6 +1,6 @@
 server:
   port: ${PORT:8080}
-  
+
 spring:
   application:
     name: todo-api
@@ -10,7 +10,7 @@ spring:
     password: ${POSTGRES_PASSWORD}
     url: jdbc:postgresql://localhost:5432/postgres
     username: postgres
-    
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     generate-ddl: false
@@ -23,6 +23,15 @@ spring:
   sql:
     init:
       mode: NEVER
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration:
+    auth: 3_600 # 60 minutes TODO: parameterize
+    passwordReset: 900 # 15 minutes TODO: parameterize
+    refresh: 86_400 # 24 hours TODO: parameterize
+  prefix: Bearer
+  header: Authorization
 
 logging:
   level:

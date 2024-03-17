@@ -12,12 +12,12 @@ import com.cp.projects.todo.service.ListItemService;
 
 
 @RestController
-@RequestMapping(path = "list/item")
+@RequestMapping("v1/lists/items")
 public class ListItemController {
   @Autowired
   private ListItemService listItemService;
   
-  @GetMapping("/")
+  @GetMapping({"/", ""})
   public List<ToDoListItem> findAll() {
       return listItemService.findAll();
   }

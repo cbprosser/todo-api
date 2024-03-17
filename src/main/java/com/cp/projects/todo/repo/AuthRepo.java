@@ -12,11 +12,11 @@ import jakarta.transaction.Transactional;
 
 public interface AuthRepo extends JpaRepository<User, UUID> {
 
-  @Query(value = "SELECT * FROM {h-schema}user u WHERE u.username = ?1 AND u.password = {h-schema}crypt(?2, u.password)", nativeQuery = true)
+  @Query(value = "SELECT * FROM {h-schema}users u WHERE u.username = ?1 AND u.password = {h-schema}crypt(?2, u.password)", nativeQuery = true)
   public User findUserByUsernameAndPassword(String username, String password);
   
   @Modifying
   @Transactional
-  @Query(value = "INSERT INTO {h-schema}user (username,password,email) VALUES (?1, crypt(?2,gen_salt('md5')), ?3)", nativeQuery = true)
+  @Query(value = "INSERT INTO {h-schema}users (username,password,email) VALUES (?1, crypt(?2,gen_salt('md5')), ?3)", nativeQuery = true)
   public int save(String username, String password, String email);
 }
