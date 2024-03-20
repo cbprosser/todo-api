@@ -2,6 +2,10 @@ package com.cp.projects.todo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +33,9 @@ public class AuthController {
   @Autowired
   private AuthService authService;
 
+  @Autowired
+  private AuthenticationManager authenticationManager;
+
   @PostMapping({ "/", "" })
   public UserDTO findUserByUsernameAndPassword(@RequestBody AuthDTO authDTO) throws Exception {
     if (authDTO == null || !StringUtils.hasText(authDTO.getUsername()) || !StringUtils.hasText(authDTO.getPassword()))
@@ -50,6 +57,16 @@ public class AuthController {
   public ResponseEntity<String> testJWT() {
     log.info("Test");
     return ResponseEntity.ok(jwtUtil.create("test", TOKEN_TYPE.AUTH));
+  }
+
+  @PostMapping("/login")
+  public ResponseEntity<String> authenticateAndGetToken(@RequestBody AuthDTO authDTO) {
+    Authentication authentication = authenticationManager
+        .authenticate(new UsernamePasswordAuthenticationToken(authDTO.getUsername(), authDTO.getPassword()));
+    if (authentication.isAuthenticated()) {
+      return ResponseEntity.ok(jwtUtil.generateToken(authDTO.getUsername()));
+    }
+    throw new UsernameNotFoundException("Invalid user request");
   }
 
 }

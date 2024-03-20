@@ -6,11 +6,14 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import com.cp.projects.todo.config.JwtConfig;
@@ -76,13 +79,47 @@ public class JwtUtil {
     return LocalDateTime.ofInstant(extractClaim(token, Claims::getExpiration).toInstant(), ZoneId.systemDefault());
   }
 
+  public String extractUsername(String token) {
+    return extractClaim(token, Claims::getSubject);
+  }
+
   public <T> T extractClaim(String token, Function<Claims, T> claimsFunc) {
     final Claims claims = extractAllClaims(token);
     return claimsFunc.apply(claims);
   }
 
   private Claims extractAllClaims(String token) {
-    return Jwts.parser().decryptWith(getKey()).build().parseSignedClaims(token).getPayload();
+    return Jwts
+        .parser()
+        .verifyWith(getKey())
+        .build()
+        .parseSignedClaims(token)
+        .getPayload();
+  }
+
+  private boolean isTokenExpired(String token) {
+    return extractExpiry(token).isBefore(LocalDateTime.now());
+  }
+
+  public boolean isTokenValid(String token, UserDetails userDetails) {
+    final String username = extractUsername(token);
+
+    return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+  }
+
+  public final String generateToken(String username) {
+    Map<String, Object> claims = new HashMap<>();
+    return createToken(claims, username);
+  }
+
+  public final String createToken(Map<String, Object> claims, String username) {
+    return Jwts.builder()
+        .claims(claims)
+        .subject(username)
+        .issuedAt(new Date(System.currentTimeMillis()))
+        .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 1))
+        .signWith(getKey(), Jwts.SIG.HS256)
+        .compact();
   }
 
   public final <T> String create(T payload, TOKEN_TYPE type) {
@@ -104,6 +141,10 @@ public class JwtUtil {
         .build();
 
     return type.getJwtGenerator().apply(options);
+  }
+
+  public JwtConfig getSettings() {
+    return settings;
   }
 
   @Data
