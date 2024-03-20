@@ -9,4 +9,6 @@ import com.cp.projects.todo.model.table.User;
 
 @Repository
 public interface UserRepo extends JpaRepository<User, UUID> {
+
+  User findByUsername(String username);
 }

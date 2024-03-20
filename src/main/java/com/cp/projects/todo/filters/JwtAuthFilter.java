@@ -17,9 +17,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.log4j.Log4j2;
 
-@Log4j2
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -33,18 +31,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
-    log.info("Filtering request...");
     String authHeader = request.getHeader(jwtUtil.getSettings().getHeader());
-    log.info("t1");
     String token = null;
     String username = null;
     if (authHeader != null && authHeader.startsWith(jwtUtil.getSettings().getPrefix())) {
-      log.info("t2");
       token = authHeader.substring(7);
-      log.info("t3");
       username = jwtUtil.extractUsername(token);
     }
-    log.info("Loaded user: {}", username);
 
     if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
       UserDetails userDetails = userDetailsServiceImpl.loadUserByUsername(username);
