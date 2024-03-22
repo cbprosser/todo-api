@@ -30,6 +30,7 @@ jwt:
     auth: 3_600 # 60 minutes TODO: parameterize
     passwordReset: 900 # 15 minutes TODO: parameterize
     refresh: 86_400 # 24 hours TODO: parameterize
+    cookie: 1_800 # 30 minutes TODO: parameterize
   prefix: Bearer
   header: Authorization
 

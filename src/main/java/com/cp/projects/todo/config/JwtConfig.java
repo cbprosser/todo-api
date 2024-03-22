@@ -21,6 +21,8 @@ public class JwtConfig {
   private long passwordRefreshExpiration;
   @Value("${jwt.expiration.refresh}")
   private long refreshExpiration;
+  @Value("${jwt.expiration.cookie}")
+  private long cookieExpiration;
   private String prefix;
   private String header;
 }

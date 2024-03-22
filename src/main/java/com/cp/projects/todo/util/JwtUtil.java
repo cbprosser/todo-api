@@ -6,8 +6,6 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
@@ -21,6 +19,7 @@ import com.cp.projects.todo.config.JwtConfig;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,45 +28,36 @@ import lombok.NoArgsConstructor;
 
 @Component
 public class JwtUtil {
+  private static JwtConfig staticSettings;
+
   @Autowired
   private JwtConfig settings;
+
+  @PostConstruct
+  private void init() {
+    staticSettings = this.settings;
+  }
 
   @Getter
   @AllArgsConstructor
   public enum TOKEN_TYPE {
     AUTH((options) -> {
-      return Jwts.builder()
-          .claims()
-          .add("type", "AUTH")
-          .add("payload", options.getPayload())
-          .and()
-          .issuedAt(Date.from(options.getIssued().atZone(ZoneId.systemDefault()).toInstant()))
-          .expiration(Date.from(options.getAuthExpiry().atZone(ZoneId.systemDefault()).toInstant()))
-          .signWith(options.getKey()).compact();
-    }),
-    REFRESH((options) -> {
-      return Jwts.builder()
-          .claims()
-          .add("type", "REFRESH")
-          .add("payload", options.getPayload())
-          .and()
-          .issuedAt(Date.from(options.getIssued().atZone(ZoneId.systemDefault()).toInstant()))
-          .expiration(Date.from(options.getRefreshExpiry().atZone(ZoneId.systemDefault()).toInstant()))
-          .signWith(options.getKey()).compact();
-    }),
-    PASSWORD_RESET((options) -> {
-      return Jwts.builder()
-          .claims()
-          .add("type", "PASSWORD_RESET")
-          .add("payload", options.getPayload())
-          .and()
-          .issuedAt(Date.from(options.getIssued().atZone(ZoneId.systemDefault()).toInstant()))
-          .expiration(Date.from(options.getPasswordResetExpiry().atZone(ZoneId.systemDefault()).toInstant()))
-          .signWith(options.getKey()).compact();
+      if (options.payload instanceof String) {
+        String payload = (String) options.payload;
+        return Jwts.builder()
+            .claims()
+            .add("type", "AUTH")
+            .and()
+            .subject(payload)
+            .issuedAt(Date.from(options.getIssued().atZone(ZoneId.systemDefault()).toInstant()))
+            .expiration(Date.from(options.issued.plus(staticSettings.getAuthExpiration(), ChronoUnit.SECONDS)
+                .atZone(ZoneId.systemDefault()).toInstant()))
+            .signWith(options.getKey()).compact();
+      }
+      return null;
     });
 
-    @SuppressWarnings("rawtypes") // TODO: fix this if possible
-    private Function<JwtTokenOptions, String> jwtGenerator;
+    private Function<JwtTokenOptions<?>, String> jwtGenerator;
   }
 
   private SecretKey getKey() {
@@ -107,37 +97,13 @@ public class JwtUtil {
     return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
   }
 
-  public final String generateToken(String username) {
-    Map<String, Object> claims = new HashMap<>();
-    return createToken(claims, username);
-  }
-
-  public final String createToken(Map<String, Object> claims, String username) {
-    return Jwts.builder()
-        .claims(claims)
-        .subject(username)
-        .issuedAt(new Date(System.currentTimeMillis()))
-        .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 1))
-        .signWith(getKey(), Jwts.SIG.HS256)
-        .compact();
-  }
-
   public final <T> String create(T payload, TOKEN_TYPE type) {
     final SecretKey key = getKey();
-
-    final LocalDateTime issued = LocalDateTime.now();
-    final LocalDateTime authExpiry = issued.plus(settings.getAuthExpiration(), ChronoUnit.SECONDS);
-    final LocalDateTime passwordRefreshExpiry = issued.plus(settings.getPasswordRefreshExpiration(),
-        ChronoUnit.SECONDS);
-    final LocalDateTime refreshExpiry = issued.plus(settings.getRefreshExpiration(), ChronoUnit.SECONDS);
 
     JwtTokenOptions<T> options = JwtTokenOptions.<T>builder()
         .key(key)
         .payload(payload)
-        .issued(issued)
-        .authExpiry(authExpiry)
-        .passwordResetExpiry(passwordRefreshExpiry)
-        .refreshExpiry(refreshExpiry)
+        .issued(LocalDateTime.now())
         .build();
 
     return type.getJwtGenerator().apply(options);
@@ -155,8 +121,5 @@ public class JwtUtil {
     private SecretKey key;
     private T payload;
     private LocalDateTime issued;
-    private LocalDateTime authExpiry;
-    private LocalDateTime passwordResetExpiry;
-    private LocalDateTime refreshExpiry;
   }
 }

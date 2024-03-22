@@ -1,14 +1,17 @@
 package com.cp.projects.todo.controller;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -27,6 +30,7 @@ import com.cp.projects.todo.util.JwtUtil;
 import com.cp.projects.todo.util.JwtUtil.TOKEN_TYPE;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
@@ -59,6 +63,7 @@ public class AuthController {
 
   @PostMapping({ "/create", "/create/" })
   public ResponseEntity<Void> createUser(@RequestBody User user) throws Exception {
+    log.info("Create request for user {}", user.getUsername());
     if (user == null || !StringUtils.hasText(user.getUsername()) || !StringUtils.hasText(user.getPassword())
         || !StringUtils.hasText(user.getEmail()))
       throw new Exception("Missing required authentication properties");
@@ -66,26 +71,32 @@ public class AuthController {
     return ResponseEntity.status(201).build();
   }
 
-  @GetMapping({ "/test", "/test/" })
-  public ResponseEntity<String> testJWT() {
-    log.info("Test");
-    return ResponseEntity.ok(jwtUtil.create("test", TOKEN_TYPE.AUTH));
-  }
-
   @PostMapping({ "/login", "/login/" })
-  public ResponseEntity<JwtDTO> authenticateAndGetToken(@RequestBody AuthDTO authDTO,
-      @RequestHeader(HttpHeaders.USER_AGENT) String userAgent) {
+  public ResponseEntity<Void> authenticateAndGetToken(
+      @RequestBody AuthDTO authDTO,
+      @RequestHeader(HttpHeaders.USER_AGENT) String userAgent,
+      HttpServletResponse response)
+      throws Exception {
+    log.info("Login request for user {}", authDTO.getUsername());
+
     String remoteAddress = request.getRemoteAddr();
-    log.info("Logging in user {}", authDTO.getUsername(), userAgent, remoteAddress);
+
     Authentication authentication = authenticationManager
         .authenticate(new UsernamePasswordAuthenticationToken(authDTO.getUsername(), authDTO.getPassword()));
+
     if (authentication.isAuthenticated()) {
-      RefreshToken refreshToken = refreshTokenService.ensureRefreshToken(authDTO.getUsername(), userAgent,
-          remoteAddress);
-      return ResponseEntity.ok(JwtDTO.builder()
-          .authToken(jwtUtil.generateToken(authDTO.getUsername()))
-          .refreshToken(refreshToken.getToken())
-          .build());
+      String authToken = jwtUtil.create(authDTO.getUsername(), TOKEN_TYPE.AUTH);
+      RefreshToken refreshToken = refreshTokenService
+          .ensureRefreshToken(authDTO.getUsername(), userAgent, remoteAddress);
+
+      createCookie("authToken", authToken, jwtUtil.getSettings().getCookieExpiration(), response);
+      createCookie(
+          "refreshToken",
+          refreshToken.getToken(),
+          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
+          response);
+
+      return ResponseEntity.ok().build();
     }
     throw new UsernameNotFoundException("Invalid user request");
   }
@@ -96,12 +107,26 @@ public class AuthController {
         .map(refreshTokenService::verifyExpiration)
         .map(RefreshToken::getUser)
         .map(user -> {
-          String accessToken = jwtUtil.generateToken(user.getUsername());
+          String accessToken = jwtUtil.create(user.getUsername(), TOKEN_TYPE.AUTH);
           return JwtDTO.builder()
               .authToken(accessToken)
               .refreshToken(refreshTokenDTO.getToken())
               .build();
         }).orElseThrow(() -> new RuntimeException("Refresh token not valid")));
+  }
+
+  private void createCookie(String cookieName, String cookieContents, long expiration, HttpServletResponse response)
+      throws Exception {
+    if (cookieName == null || cookieContents == null)
+      throw new Exception("Missing cookie name/contents");
+    ResponseCookie cookie = ResponseCookie.from(cookieName, cookieContents)
+        .httpOnly(true)
+        .secure(false)
+        .path("/")
+        .maxAge(expiration)
+        .build();
+
+    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
   }
 
 }
