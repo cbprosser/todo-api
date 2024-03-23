@@ -11,9 +11,6 @@ import com.cp.projects.todo.model.table.RefreshToken;
 import com.cp.projects.todo.repo.RefreshTokenRepo;
 import com.cp.projects.todo.repo.UserRepo;
 
-import lombok.extern.log4j.Log4j2;
-
-@Log4j2
 @Service
 public class RefreshTokenService {
 
@@ -31,7 +28,6 @@ public class RefreshTokenService {
         .fingerprint(fingerprint)
         .build();
     RefreshToken saved = refreshTokenRepo.save(refreshToken);
-    log.info("Saved: {}", saved);
     return saved;
   }
 

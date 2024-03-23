@@ -49,22 +49,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       return;
     }
 
-    Optional<Cookie> optAuthToken = null;
-    Optional<Cookie> optFingerprint = null;
-
-    String authToken = null;
-    String fingerprint = null;
-    String username = null;
-    Map<String, Cookie> cookieMap;
+    Optional<Cookie> optAuthToken = Optional.empty();
+    Optional<Cookie> optFingerprint = Optional.empty();
 
     if (request.getCookies() != null) {
-      cookieMap = Arrays.stream(request.getCookies())
+      Map<String, Cookie> cookieMap = Arrays.stream(request.getCookies())
           .collect(Collectors.toMap(cookie -> cookie.getName(), cookie -> cookie));
       optAuthToken = Optional.ofNullable(cookieMap.get("authToken"));
       optFingerprint = Optional.ofNullable(cookieMap.get("fingerprint"));
     }
 
     if (optAuthToken.isPresent() && optFingerprint.isPresent()) {
+      String authToken = null;
+      String fingerprint = null;
+      String username = null;
       authToken = optAuthToken.get().getValue();
       fingerprint = optFingerprint.get().getValue();
 
@@ -77,13 +75,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
               null, userDetails.getAuthorities());
           authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
           SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-        } else {
-          username = null;
+
+          filterChain.doFilter(request, response);
+          return;
         }
       }
     }
 
-    filterChain.doFilter(request, response);
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
   }
 
 }

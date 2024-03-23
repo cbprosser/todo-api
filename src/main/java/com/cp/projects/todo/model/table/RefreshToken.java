@@ -3,6 +3,9 @@ package com.cp.projects.todo.model.table;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -23,12 +26,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 public class RefreshToken {
+
   @Id
   @GeneratedValue
   private UUID refreshTokenId;
   private String token;
   private String fingerprint;
-  @Column(insertable = false)
+
+  @Generated(event = EventType.INSERT)
+  @Column(insertable = false, nullable = false)
   private LocalDate expireDate;
 
   @ManyToOne

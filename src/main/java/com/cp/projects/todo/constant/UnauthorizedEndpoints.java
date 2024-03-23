@@ -11,7 +11,8 @@ public class UnauthorizedEndpoints {
   private final static String[] UNAUTHORIZED_ENDPOINTS_WITHOUT_SLASHES = new String[] {
       "/v1/auth/login",
       "/v1/auth/refresh",
-      "/v1/users/save"
+      "/v1/users/save",
+      "/error"
   };
   public final static String[] UNAUTHORIZED_ENDPOINTS = Arrays.stream(UNAUTHORIZED_ENDPOINTS_WITHOUT_SLASHES)
       .map(endpoint -> new String[] { endpoint, endpoint + "/" })

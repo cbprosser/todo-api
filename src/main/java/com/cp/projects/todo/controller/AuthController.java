@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cp.projects.todo.model.dto.AuthDTO;
-import com.cp.projects.todo.model.dto.JwtDTO;
 import com.cp.projects.todo.model.dto.UserDTO;
 import com.cp.projects.todo.model.table.RefreshToken;
 import com.cp.projects.todo.model.table.User;
@@ -31,9 +30,7 @@ import com.cp.projects.todo.util.JwtUtil;
 import com.cp.projects.todo.util.JwtUtil.TOKEN_TYPE;
 
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.log4j.Log4j2;
 
-@Log4j2
 @RestController
 @RequestMapping("v1/auth")
 public class AuthController {
@@ -57,13 +54,11 @@ public class AuthController {
   public UserDTO findUserByUsernameAndPassword(@RequestBody AuthDTO authDTO) throws Exception {
     if (authDTO == null || !StringUtils.hasText(authDTO.getUsername()) || !StringUtils.hasText(authDTO.getPassword()))
       throw new Exception("Missing required authentication properties");
-    log.info("Finding user {}", authDTO.getUsername());
     return authService.findUserByUsernameAndPassword(authDTO);
   }
 
   @PostMapping({ "/create", "/create/" })
   public ResponseEntity<Void> createUser(@RequestBody User user) throws Exception {
-    log.info("Create request for user {}", user.getUsername());
     if (user == null || !StringUtils.hasText(user.getUsername()) || !StringUtils.hasText(user.getPassword())
         || !StringUtils.hasText(user.getEmail()))
       throw new Exception("Missing required authentication properties");
@@ -77,7 +72,6 @@ public class AuthController {
       @CookieValue(name = "fingerprint", required = false) Optional<String> optFingerprintCookie,
       HttpServletResponse response)
       throws Exception {
-    log.info("Login request for user {}, fingy: {}", authDTO.getUsername(), optFingerprintCookie.isPresent());
 
     Authentication authentication = authenticationManager
         .authenticate(new UsernamePasswordAuthenticationToken(authDTO.getUsername(), authDTO.getPassword()));
@@ -86,14 +80,13 @@ public class AuthController {
       String fingerprint = optFingerprintCookie.orElse(fgpUtil.getFingerprint());
       String authToken = jwtUtil.create(authDTO.getUsername(), TOKEN_TYPE.AUTH, fingerprint);
       RefreshToken refreshToken = refreshTokenService.ensureRefreshToken(authDTO.getUsername(), fingerprint);
-      log.info("Refresh token: {}", refreshToken);
 
       createCookie("authToken", authToken, jwtUtil.getSettings().getCookieExpiration(), response);
       createCookie("fingerprint", fingerprint, response);
       createCookie(
           "refreshToken",
           refreshToken.getToken(),
-          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(), // TODO: Figure out why this is broken
+          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
           response);
 
       return ResponseEntity.ok().build();
@@ -102,17 +95,28 @@ public class AuthController {
   }
 
   @PostMapping({ "/refresh", "/refresh/" })
-  public ResponseEntity<JwtDTO> refreshToken(@CookieValue String refreshToken, @CookieValue String fingerprint) {
-    return ResponseEntity.ok(refreshTokenService.findByToken(refreshToken)
-        .map(refreshTokenService::verifyExpiration)
-        .map(RefreshToken::getUser)
-        .map(user -> {
-          String accessToken = jwtUtil.create(user.getUsername(), TOKEN_TYPE.AUTH);
-          return JwtDTO.builder()
-              .authToken(accessToken)
-              .refreshToken(refreshToken)
-              .build();
-        }).orElseThrow(() -> new RuntimeException("Refresh token not valid")));
+  public ResponseEntity<Void> refreshToken(
+      @CookieValue(name = "refreshToken") String token,
+      @CookieValue String fingerprint,
+      HttpServletResponse response)
+      throws Exception {
+    Optional<RefreshToken> optRefreshToken = refreshTokenService.findByToken(token);
+
+    if (optRefreshToken.isPresent()) {
+      RefreshToken refreshToken = optRefreshToken.get();
+      String authToken = jwtUtil.create(refreshToken.getUser().getUsername(), TOKEN_TYPE.AUTH, fingerprint);
+
+      createCookie("authToken", authToken, jwtUtil.getSettings().getCookieExpiration(), response);
+      createCookie("fingerprint", fingerprint, response);
+      createCookie(
+          "refreshToken",
+          refreshToken.getToken(),
+          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
+          response);
+
+      return ResponseEntity.ok().build();
+    }
+    throw new RuntimeException("Invalid refresh token");
   }
 
   private void createCookie(String cookieName, String cookieContents, long expiration, HttpServletResponse response)
