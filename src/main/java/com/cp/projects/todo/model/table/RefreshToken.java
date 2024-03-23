@@ -27,8 +27,7 @@ public class RefreshToken {
   @GeneratedValue
   private UUID refreshTokenId;
   private String token;
-  private String device;
-  private String address;
+  private String fingerprint;
   @Column(insertable = false)
   private LocalDate expireDate;
 

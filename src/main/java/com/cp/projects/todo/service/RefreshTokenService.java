@@ -11,6 +11,9 @@ import com.cp.projects.todo.model.table.RefreshToken;
 import com.cp.projects.todo.repo.RefreshTokenRepo;
 import com.cp.projects.todo.repo.UserRepo;
 
+import lombok.extern.log4j.Log4j2;
+
+@Log4j2
 @Service
 public class RefreshTokenService {
 
@@ -21,19 +24,20 @@ public class RefreshTokenService {
   private UserRepo userRepo;
 
   @SuppressWarnings("null")
-  private RefreshToken createRefreshToken(String username, String userAgent, String remoteAddress) {
+  private RefreshToken createRefreshToken(String username, String fingerprint) {
     RefreshToken refreshToken = RefreshToken.builder()
         .user(userRepo.findByUsername(username))
         .token(UUID.randomUUID().toString())
-        .device(userAgent)
-        .address(remoteAddress)
+        .fingerprint(fingerprint)
         .build();
-    return refreshTokenRepo.save(refreshToken);
+    RefreshToken saved = refreshTokenRepo.save(refreshToken);
+    log.info("Saved: {}", saved);
+    return saved;
   }
 
   @SuppressWarnings("null")
-  public RefreshToken ensureRefreshToken(String username, String userAgent, String remoteAddress) {
-    Optional<RefreshToken> existingToken = findByDeviceAndAddress(userAgent, remoteAddress);
+  public RefreshToken ensureRefreshToken(String username, String fingerprint) {
+    Optional<RefreshToken> existingToken = refreshTokenRepo.findByFingerprint(fingerprint);
     if (existingToken.isPresent()) {
       RefreshToken token = existingToken.get();
       try {
@@ -42,11 +46,7 @@ public class RefreshTokenService {
         refreshTokenRepo.delete(token);
       }
     }
-    return createRefreshToken(username, userAgent, remoteAddress);
-  }
-
-  public Optional<RefreshToken> findByDeviceAndAddress(String device, String address) {
-    return refreshTokenRepo.findByDeviceAndAddress(device, address);
+    return createRefreshToken(username, fingerprint);
   }
 
   public Optional<RefreshToken> findByToken(String token) {

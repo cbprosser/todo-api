@@ -2,6 +2,7 @@ package com.cp.projects.todo.controller;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -12,24 +13,23 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cp.projects.todo.model.dto.AuthDTO;
 import com.cp.projects.todo.model.dto.JwtDTO;
-import com.cp.projects.todo.model.dto.RefreshTokenDTO;
 import com.cp.projects.todo.model.dto.UserDTO;
 import com.cp.projects.todo.model.table.RefreshToken;
 import com.cp.projects.todo.model.table.User;
 import com.cp.projects.todo.service.AuthService;
 import com.cp.projects.todo.service.RefreshTokenService;
+import com.cp.projects.todo.util.FingerprintUtil;
 import com.cp.projects.todo.util.JwtUtil;
 import com.cp.projects.todo.util.JwtUtil.TOKEN_TYPE;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.log4j.Log4j2;
 
@@ -42,6 +42,9 @@ public class AuthController {
   private JwtUtil jwtUtil;
 
   @Autowired
+  private FingerprintUtil fgpUtil;
+
+  @Autowired
   private AuthService authService;
 
   @Autowired
@@ -49,9 +52,6 @@ public class AuthController {
 
   @Autowired
   private AuthenticationManager authenticationManager;
-
-  @Autowired
-  private HttpServletRequest request;
 
   @PostMapping({ "/", "" })
   public UserDTO findUserByUsernameAndPassword(@RequestBody AuthDTO authDTO) throws Exception {
@@ -74,26 +74,26 @@ public class AuthController {
   @PostMapping({ "/login", "/login/" })
   public ResponseEntity<Void> authenticateAndGetToken(
       @RequestBody AuthDTO authDTO,
-      @RequestHeader(HttpHeaders.USER_AGENT) String userAgent,
+      @CookieValue(name = "fingerprint", required = false) Optional<String> optFingerprintCookie,
       HttpServletResponse response)
       throws Exception {
-    log.info("Login request for user {}", authDTO.getUsername());
-
-    String remoteAddress = request.getRemoteAddr();
+    log.info("Login request for user {}, fingy: {}", authDTO.getUsername(), optFingerprintCookie.isPresent());
 
     Authentication authentication = authenticationManager
         .authenticate(new UsernamePasswordAuthenticationToken(authDTO.getUsername(), authDTO.getPassword()));
 
     if (authentication.isAuthenticated()) {
-      String authToken = jwtUtil.create(authDTO.getUsername(), TOKEN_TYPE.AUTH);
-      RefreshToken refreshToken = refreshTokenService
-          .ensureRefreshToken(authDTO.getUsername(), userAgent, remoteAddress);
+      String fingerprint = optFingerprintCookie.orElse(fgpUtil.getFingerprint());
+      String authToken = jwtUtil.create(authDTO.getUsername(), TOKEN_TYPE.AUTH, fingerprint);
+      RefreshToken refreshToken = refreshTokenService.ensureRefreshToken(authDTO.getUsername(), fingerprint);
+      log.info("Refresh token: {}", refreshToken);
 
       createCookie("authToken", authToken, jwtUtil.getSettings().getCookieExpiration(), response);
+      createCookie("fingerprint", fingerprint, response);
       createCookie(
           "refreshToken",
           refreshToken.getToken(),
-          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
+          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(), // TODO: Figure out why this is broken
           response);
 
       return ResponseEntity.ok().build();
@@ -102,15 +102,15 @@ public class AuthController {
   }
 
   @PostMapping({ "/refresh", "/refresh/" })
-  public ResponseEntity<JwtDTO> refreshToken(@RequestBody RefreshTokenDTO refreshTokenDTO) {
-    return ResponseEntity.ok(refreshTokenService.findByToken(refreshTokenDTO.getToken())
+  public ResponseEntity<JwtDTO> refreshToken(@CookieValue String refreshToken, @CookieValue String fingerprint) {
+    return ResponseEntity.ok(refreshTokenService.findByToken(refreshToken)
         .map(refreshTokenService::verifyExpiration)
         .map(RefreshToken::getUser)
         .map(user -> {
           String accessToken = jwtUtil.create(user.getUsername(), TOKEN_TYPE.AUTH);
           return JwtDTO.builder()
               .authToken(accessToken)
-              .refreshToken(refreshTokenDTO.getToken())
+              .refreshToken(refreshToken)
               .build();
         }).orElseThrow(() -> new RuntimeException("Refresh token not valid")));
   }
@@ -124,6 +124,21 @@ public class AuthController {
         .secure(false)
         .path("/")
         .maxAge(expiration)
+        .sameSite("strict")
+        .build();
+
+    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+  }
+
+  private void createCookie(String cookieName, String cookieContents, HttpServletResponse response)
+      throws Exception {
+    if (cookieName == null || cookieContents == null)
+      throw new Exception("Missing cookie name/contents");
+    ResponseCookie cookie = ResponseCookie.from(cookieName, cookieContents)
+        .httpOnly(true)
+        .secure(false)
+        .path("/")
+        .sameSite("strict")
         .build();
 
     response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
