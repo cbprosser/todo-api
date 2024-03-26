@@ -2,6 +2,7 @@ package com.cp.projects.todo.controller;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,9 @@ import com.cp.projects.todo.util.JwtUtil;
 import com.cp.projects.todo.util.JwtUtil.TOKEN_TYPE;
 
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.log4j.Log4j2;
 
+@Log4j2
 @RestController
 @RequestMapping("v1/auth")
 public class AuthController {
@@ -67,7 +70,7 @@ public class AuthController {
   }
 
   @PostMapping({ "/login", "/login/" })
-  public ResponseEntity<Void> authenticateAndGetToken(
+  public ResponseEntity<UserDTO> authenticateAndGetToken(
       @RequestBody AuthDTO authDTO,
       @CookieValue(name = "fingerprint", required = false) Optional<String> optFingerprintCookie,
       HttpServletResponse response)
@@ -77,25 +80,38 @@ public class AuthController {
         .authenticate(new UsernamePasswordAuthenticationToken(authDTO.getUsername(), authDTO.getPassword()));
 
     if (authentication.isAuthenticated()) {
+      log.info("Details: {}\nPrincipal: {}", authentication.getDetails(), authentication.getPrincipal());
       String fingerprint = optFingerprintCookie.orElse(fgpUtil.getFingerprint());
       String authToken = jwtUtil.create(authDTO.getUsername(), TOKEN_TYPE.AUTH, fingerprint);
       RefreshToken refreshToken = refreshTokenService.ensureRefreshToken(authDTO.getUsername(), fingerprint);
+      if (!fingerprint.equals(refreshToken.getFingerprint())) {
+        fingerprint = refreshToken.getFingerprint();
+      }
 
-      createCookie("authToken", authToken, jwtUtil.getSettings().getCookieExpiration(), response);
-      createCookie("fingerprint", fingerprint, response);
+      createCookie("authToken", authToken, jwtUtil.getSettings().getAuthExpiration(), response);
+      createCookie("fingerprint", fingerprint,
+          LocalDateTime.of(
+              9999,
+              12,
+              31,
+              11,
+              59,
+              59,
+              999).toEpochSecond(ZoneOffset.UTC),
+          response);
       createCookie(
           "refreshToken",
           refreshToken.getToken(),
           Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
           response);
 
-      return ResponseEntity.ok().build();
+      return ResponseEntity.ok(new UserDTO((User) authentication.getPrincipal()));
     }
     throw new UsernameNotFoundException("Invalid user request");
   }
 
   @PostMapping({ "/refresh", "/refresh/" })
-  public ResponseEntity<Void> refreshToken(
+  public ResponseEntity<UserDTO> refreshToken(
       @CookieValue(name = "refreshToken") String token,
       @CookieValue String fingerprint,
       HttpServletResponse response)
@@ -106,15 +122,24 @@ public class AuthController {
       RefreshToken refreshToken = optRefreshToken.get();
       String authToken = jwtUtil.create(refreshToken.getUser().getUsername(), TOKEN_TYPE.AUTH, fingerprint);
 
-      createCookie("authToken", authToken, jwtUtil.getSettings().getCookieExpiration(), response);
-      createCookie("fingerprint", fingerprint, response);
+      createCookie("authToken", authToken, jwtUtil.getSettings().getAuthExpiration(), response);
+      createCookie("fingerprint", fingerprint,
+          LocalDateTime.of(
+              9999,
+              12,
+              31,
+              11,
+              59,
+              59,
+              999).toEpochSecond(ZoneOffset.UTC),
+          response);
       createCookie(
           "refreshToken",
           refreshToken.getToken(),
           Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
           response);
 
-      return ResponseEntity.ok().build();
+      return ResponseEntity.ok(new UserDTO(refreshToken.getUser()));
     }
     throw new RuntimeException("Invalid refresh token");
   }
@@ -128,20 +153,6 @@ public class AuthController {
         .secure(false)
         .path("/")
         .maxAge(expiration)
-        .sameSite("strict")
-        .build();
-
-    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-  }
-
-  private void createCookie(String cookieName, String cookieContents, HttpServletResponse response)
-      throws Exception {
-    if (cookieName == null || cookieContents == null)
-      throw new Exception("Missing cookie name/contents");
-    ResponseCookie cookie = ResponseCookie.from(cookieName, cookieContents)
-        .httpOnly(true)
-        .secure(false)
-        .path("/")
         .sameSite("strict")
         .build();
 

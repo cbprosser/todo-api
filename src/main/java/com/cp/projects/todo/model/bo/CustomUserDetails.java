@@ -12,11 +12,15 @@ import com.cp.projects.todo.model.table.User;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
+@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class CustomUserDetails extends User implements UserDetails {
   private String username;
+
+  @ToString.Exclude
   private String password;
   private Collection<? extends GrantedAuthority> authorities;
   private boolean accountNonExpired;
@@ -25,6 +29,7 @@ public class CustomUserDetails extends User implements UserDetails {
   private boolean enabled;
 
   public CustomUserDetails(User user) {
+    super(user);
     this.username = user.getUsername();
     this.password = user.getPassword();
     List<GrantedAuthority> auths = new ArrayList<>();

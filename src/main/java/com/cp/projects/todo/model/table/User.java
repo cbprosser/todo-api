@@ -22,6 +22,14 @@ import lombok.ToString;
 @Builder(toBuilder = true)
 public class User {
 
+  public User(User user) {
+    this.userId = user.userId;
+    this.username = user.username;
+    this.password = user.password;
+    this.email = user.email;
+    this.createDate = user.createDate;
+  }
+
   @Id
   @GeneratedValue
   private UUID userId;

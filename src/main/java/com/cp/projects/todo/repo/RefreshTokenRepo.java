@@ -10,5 +10,5 @@ import com.cp.projects.todo.model.table.RefreshToken;
 public interface RefreshTokenRepo extends JpaRepository<RefreshToken, UUID> {
   Optional<RefreshToken> findByToken(String token);
   
-  Optional<RefreshToken> findByFingerprint(String fingerprint);
+  Optional<RefreshToken> findByFingerprintAndUserUsername(String fingerprint, String username);
 }

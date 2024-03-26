@@ -1,5 +1,7 @@
 package com.cp.projects.todo.config;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,7 +43,10 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/v1/**", new CorsConfiguration().applyPermitDefaultValues());
+    CorsConfiguration config = new CorsConfiguration().applyPermitDefaultValues();
+    config.setAllowedOrigins(List.of("http://localhost:5173"));
+    config.setAllowCredentials(true);
+    source.registerCorsConfiguration("/v1/**", config);
     return source;
   }
 

@@ -10,7 +10,11 @@ import org.springframework.stereotype.Service;
 import com.cp.projects.todo.model.table.RefreshToken;
 import com.cp.projects.todo.repo.RefreshTokenRepo;
 import com.cp.projects.todo.repo.UserRepo;
+import com.cp.projects.todo.util.FingerprintUtil;
 
+import lombok.extern.log4j.Log4j2;
+
+@Log4j2
 @Service
 public class RefreshTokenService {
 
@@ -19,13 +23,16 @@ public class RefreshTokenService {
 
   @Autowired
   private UserRepo userRepo;
+  
+  @Autowired
+  private FingerprintUtil fgpUtil;
 
   @SuppressWarnings("null")
-  private RefreshToken createRefreshToken(String username, String fingerprint) {
+  private RefreshToken createRefreshToken(String username) {
     RefreshToken refreshToken = RefreshToken.builder()
         .user(userRepo.findByUsername(username))
         .token(UUID.randomUUID().toString())
-        .fingerprint(fingerprint)
+        .fingerprint(fgpUtil.getFingerprint())
         .build();
     RefreshToken saved = refreshTokenRepo.save(refreshToken);
     return saved;
@@ -33,8 +40,9 @@ public class RefreshTokenService {
 
   @SuppressWarnings("null")
   public RefreshToken ensureRefreshToken(String username, String fingerprint) {
-    Optional<RefreshToken> existingToken = refreshTokenRepo.findByFingerprint(fingerprint);
+    Optional<RefreshToken> existingToken = refreshTokenRepo.findByFingerprintAndUserUsername(fingerprint, username);
     if (existingToken.isPresent()) {
+      log.info("existingToken: {}", existingToken.get());
       RefreshToken token = existingToken.get();
       try {
         return verifyExpiration(token);
@@ -42,7 +50,7 @@ public class RefreshTokenService {
         refreshTokenRepo.delete(token);
       }
     }
-    return createRefreshToken(username, fingerprint);
+    return createRefreshToken(username);
   }
 
   public Optional<RefreshToken> findByToken(String token) {
