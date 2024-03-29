@@ -25,7 +25,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.log4j.Log4j2;
 
+@Log4j2
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
@@ -44,10 +46,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       HttpServletResponse response,
       FilterChain filterChain)
       throws ServletException, IOException {
+    log.info("{} - {}", request.getMethod(), request.getRequestURI());
     if (ignoredPaths.matches(request)) {
       filterChain.doFilter(request, response);
       return;
     }
+    log.info("Filtering");
 
     Optional<Cookie> optAuthToken = Optional.empty();
     Optional<Cookie> optFingerprint = Optional.empty();
@@ -65,6 +69,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       String username = null;
       authToken = optAuthToken.get().getValue();
       fingerprint = optFingerprint.get().getValue();
+      log.debug("AuthToken: {}\nFingerprint: {}", authToken, fingerprint);
 
       username = jwtUtil.extractUsername(authToken);
 

@@ -26,7 +26,7 @@ public class ToDoListItem {
   private UUID listItemId;
   private String description;
   @ManyToOne
-  @JoinTable(name = "ae_list_to_list_item", joinColumns = {
+  @JoinTable(name = "ae_lists_to_list_items", joinColumns = {
       @JoinColumn(name = "list_item_id")
   }, inverseJoinColumns = {
       @JoinColumn(name = "list_id")
