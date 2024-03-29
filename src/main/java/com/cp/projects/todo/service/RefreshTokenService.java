@@ -23,7 +23,7 @@ public class RefreshTokenService {
 
   @Autowired
   private UserRepo userRepo;
-  
+
   @Autowired
   private FingerprintUtil fgpUtil;
 
@@ -71,5 +71,17 @@ public class RefreshTokenService {
       throw new RuntimeException(token.getToken() + " Refresh token does not match expected user.");
     }
     return token;
+  }
+
+  public void deleteToken(String refreshToken, String fingerprint) throws Exception {
+    Optional<RefreshToken> optFoundToken = findByToken(refreshToken);
+    if (!optFoundToken.isPresent()) {
+      throw new Exception("Refresh token missing");
+    }
+    RefreshToken foundToken = optFoundToken.get();
+    if (!fingerprint.equals(foundToken.getFingerprint())) {
+      throw new Exception("Fingerprint does not match");
+    }
+    refreshTokenRepo.delete(foundToken);
   }
 }

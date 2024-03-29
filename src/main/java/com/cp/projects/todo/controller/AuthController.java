@@ -94,37 +94,7 @@ public class AuthController {
       }
       String authToken = jwtUtil.create(authDTO.getUsername(), TOKEN_TYPE.AUTH, fingerprint);
 
-      createCookie("authToken", authToken, jwtUtil.getSettings().getAuthExpiration(), response, COOKIE_TYPE.SECURE);
-      createCookie("fingerprint",
-          fingerprint,
-          LocalDateTime.of(
-              9999,
-              12,
-              31,
-              11,
-              59,
-              59,
-              999).toEpochSecond(ZoneOffset.UTC),
-          response,
-          COOKIE_TYPE.SECURE);
-      createCookie("hasfgpt",
-          "",
-          LocalDateTime.of(
-              9999,
-              12,
-              31,
-              11,
-              59,
-              59,
-              999).toEpochSecond(ZoneOffset.UTC),
-          response,
-          COOKIE_TYPE.UNSECURE);
-      createCookie(
-          "refreshToken",
-          refreshToken.getToken(),
-          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
-          response,
-          COOKIE_TYPE.SECURE);
+      createAllCookies(fingerprint, response, refreshToken, authToken);
 
       return ResponseEntity.ok(new UserDTO((User) authentication.getPrincipal()));
     }
@@ -143,41 +113,23 @@ public class AuthController {
       RefreshToken refreshToken = optRefreshToken.get();
       String authToken = jwtUtil.create(refreshToken.getUser().getUsername(), TOKEN_TYPE.AUTH, fingerprint);
 
-      createCookie("authToken", authToken, jwtUtil.getSettings().getAuthExpiration(), response, COOKIE_TYPE.SECURE);
-      createCookie("fingerprint",
-          fingerprint,
-          LocalDateTime.of(
-              9999,
-              12,
-              31,
-              11,
-              59,
-              59,
-              999).toEpochSecond(ZoneOffset.UTC),
-          response,
-          COOKIE_TYPE.SECURE);
-      createCookie("hasfgpt",
-          "",
-          LocalDateTime.of(
-              9999,
-              12,
-              31,
-              11,
-              59,
-              59,
-              999).toEpochSecond(ZoneOffset.UTC),
-          response,
-          COOKIE_TYPE.UNSECURE);
-      createCookie(
-          "refreshToken",
-          refreshToken.getToken(),
-          Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
-          response,
-          COOKIE_TYPE.SECURE);
+      createAllCookies(fingerprint, response, refreshToken, authToken);
 
       return ResponseEntity.ok(new UserDTO(refreshToken.getUser()));
     }
+    deleteAllCookies(response);
     throw new RuntimeException("Invalid refresh token");
+  }
+
+  @PostMapping({ "/logout", "/logout/" })
+  public ResponseEntity<Void> logout(
+      @CookieValue String refreshToken,
+      @CookieValue String fingerprint,
+      HttpServletResponse response)
+      throws Exception {
+    refreshTokenService.deleteToken(refreshToken, fingerprint);
+    deleteAllCookies(response);
+    return ResponseEntity.ok().build();
   }
 
   private void createCookie(
@@ -206,6 +158,37 @@ public class AuthController {
     ResponseCookie cookie = cookieBuilder.build();
 
     response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+  }
+
+  private void createAllCookies(String fingerprint, HttpServletResponse response, RefreshToken refreshToken,
+      String authToken)
+      throws Exception {
+    createCookie("authToken", authToken, jwtUtil.getSettings().getAuthExpiration(), response, COOKIE_TYPE.SECURE);
+    createCookie(
+        "fingerprint",
+        fingerprint,
+        LocalDateTime.of(9999, 12, 31, 11, 59, 59, 999).toEpochSecond(ZoneOffset.UTC),
+        response,
+        COOKIE_TYPE.SECURE);
+    createCookie(
+        "hasfgpt",
+        "",
+        LocalDateTime.of(9999, 12, 31, 11, 59, 59, 999).toEpochSecond(ZoneOffset.UTC),
+        response,
+        COOKIE_TYPE.UNSECURE);
+    createCookie(
+        "refreshToken",
+        refreshToken.getToken(),
+        Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
+        response,
+        COOKIE_TYPE.SECURE);
+  }
+
+  private void deleteAllCookies(HttpServletResponse response) throws Exception {
+    createCookie("authToken", "", 0, response, COOKIE_TYPE.SECURE);
+    createCookie("fingerprint", "", 0, response, COOKIE_TYPE.SECURE);
+    createCookie("hasfgpt", "", 0, response, COOKIE_TYPE.UNSECURE);
+    createCookie("refreshToken", "", 0, response, COOKIE_TYPE.SECURE);
   }
 
 }
