@@ -24,6 +24,8 @@ public class UserDTO {
     this.userId = db.getUserId();
     this.username = db.getUsername();
     this.email = db.getEmail();
-    this.joined = db.getCreateDate().toLocalDate();
+    if (db.getCreateDate() != null) {
+      this.joined = db.getCreateDate().toLocalDate();
+    }
   }
 }

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.Formula;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -22,6 +24,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "lists")
@@ -29,6 +32,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder(toBuilder = true)
+@ToString(doNotUseGetters = true)
 public class ToDoList {
   @Id
   @GeneratedValue
@@ -36,6 +40,7 @@ public class ToDoList {
   private String title;
   private String description;
 
+  @Generated(event = EventType.INSERT)
   @Column(insertable = false)
   private LocalDateTime createDate;
 
@@ -44,18 +49,18 @@ public class ToDoList {
 
   @ManyToOne
   @JoinTable(name = "ae_users_to_lists", joinColumns = {
-      @JoinColumn(name = "list_id")
+    @JoinColumn(name = "list_id")
   }, inverseJoinColumns = {
-      @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id")
   })
   @JsonBackReference
   private User user;
 
   @OneToMany(fetch = FetchType.LAZY)
   @JoinTable(name = "ae_lists_to_List_items", joinColumns = {
-      @JoinColumn(name = "list_id")
+    @JoinColumn(name = "list_id")
   }, inverseJoinColumns = {
-      @JoinColumn(name = "List_item_id")
+    @JoinColumn(name = "List_item_id")
   })
   private List<ToDoListItem> items;
 }

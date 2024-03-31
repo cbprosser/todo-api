@@ -12,6 +12,7 @@ public class UnauthorizedEndpoints {
       "/v1/auth/login",
       "/v1/auth/refresh",
       "/v1/users/save",
+      "/v1/users/confirm/{token}",
       "/error"
   };
   public final static String[] UNAUTHORIZED_ENDPOINTS = Arrays.stream(UNAUTHORIZED_ENDPOINTS_WITHOUT_SLASHES)

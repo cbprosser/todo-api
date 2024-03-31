@@ -48,10 +48,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
     log.info("{} - {}", request.getMethod(), request.getRequestURI());
     if (ignoredPaths.matches(request)) {
+      log.info("Not Filtering");
       filterChain.doFilter(request, response);
       return;
     }
-    log.info("Filtering");
 
     Optional<Cookie> optAuthToken = Optional.empty();
     Optional<Cookie> optFingerprint = Optional.empty();

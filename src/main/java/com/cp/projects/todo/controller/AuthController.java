@@ -1,14 +1,8 @@
 package com.cp.projects.todo.controller;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
-import org.springframework.http.ResponseCookie.ResponseCookieBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,11 +16,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cp.projects.todo.model.dto.AuthDTO;
+import com.cp.projects.todo.model.dto.RecoverDTO;
 import com.cp.projects.todo.model.dto.UserDTO;
 import com.cp.projects.todo.model.table.RefreshToken;
 import com.cp.projects.todo.model.table.User;
 import com.cp.projects.todo.service.AuthService;
 import com.cp.projects.todo.service.RefreshTokenService;
+import com.cp.projects.todo.util.CookieUtils;
 import com.cp.projects.todo.util.FingerprintUtil;
 import com.cp.projects.todo.util.JwtUtil;
 import com.cp.projects.todo.util.JwtUtil.TOKEN_TYPE;
@@ -38,11 +34,6 @@ import lombok.extern.log4j.Log4j2;
 @RestController
 @RequestMapping("v1/auth")
 public class AuthController {
-
-  private enum COOKIE_TYPE {
-    SECURE,
-    UNSECURE,
-  }
 
   @Autowired
   private JwtUtil jwtUtil;
@@ -66,15 +57,6 @@ public class AuthController {
     return authService.findUserByUsernameAndPassword(authDTO);
   }
 
-  @PostMapping({ "/create", "/create/" })
-  public ResponseEntity<Void> createUser(@RequestBody User user) throws Exception {
-    if (user == null || !StringUtils.hasText(user.getUsername()) || !StringUtils.hasText(user.getPassword())
-        || !StringUtils.hasText(user.getEmail()))
-      throw new Exception("Missing required authentication properties");
-    authService.createUser(user);
-    return ResponseEntity.status(201).build();
-  }
-
   @PostMapping({ "/login", "/login/" })
   public ResponseEntity<UserDTO> authenticateAndGetToken(
       @RequestBody AuthDTO authDTO,
@@ -94,7 +76,7 @@ public class AuthController {
       }
       String authToken = jwtUtil.create(authDTO.getUsername(), TOKEN_TYPE.AUTH, fingerprint);
 
-      createAllCookies(fingerprint, response, refreshToken, authToken);
+      CookieUtils.createAllCookies(fingerprint, response, refreshToken, authToken);
 
       return ResponseEntity.ok(new UserDTO((User) authentication.getPrincipal()));
     }
@@ -113,11 +95,11 @@ public class AuthController {
       RefreshToken refreshToken = optRefreshToken.get();
       String authToken = jwtUtil.create(refreshToken.getUser().getUsername(), TOKEN_TYPE.AUTH, fingerprint);
 
-      createAllCookies(fingerprint, response, refreshToken, authToken);
+      CookieUtils.createAllCookies(fingerprint, response, refreshToken, authToken);
 
       return ResponseEntity.ok(new UserDTO(refreshToken.getUser()));
     }
-    deleteAllCookies(response);
+    CookieUtils.deleteAllCookies(response);
     throw new RuntimeException("Invalid refresh token");
   }
 
@@ -128,67 +110,14 @@ public class AuthController {
       HttpServletResponse response)
       throws Exception {
     refreshTokenService.deleteToken(refreshToken, fingerprint);
-    deleteAllCookies(response);
+    CookieUtils.deleteAllCookies(response);
     return ResponseEntity.ok().build();
   }
 
-  private void createCookie(
-      String cookieName,
-      String cookieContents,
-      long expiration,
-      HttpServletResponse response,
-      COOKIE_TYPE type)
-      throws Exception {
-    if (cookieName == null || cookieContents == null)
-      throw new Exception("Missing cookie name/contents");
-    ResponseCookieBuilder cookieBuilder = ResponseCookie.from(cookieName, cookieContents)
-        .httpOnly(true)
-        .secure(false)
-        .path("/")
-        .maxAge(expiration)
-        .sameSite("strict");
-    switch (type) {
-      case UNSECURE:
-        cookieBuilder.httpOnly(false);
-        break;
-      default:
-        cookieBuilder.httpOnly(true);
-        break;
-    }
-    ResponseCookie cookie = cookieBuilder.build();
-
-    response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-  }
-
-  private void createAllCookies(String fingerprint, HttpServletResponse response, RefreshToken refreshToken,
-      String authToken)
-      throws Exception {
-    createCookie("authToken", authToken, jwtUtil.getSettings().getAuthExpiration(), response, COOKIE_TYPE.SECURE);
-    createCookie(
-        "fingerprint",
-        fingerprint,
-        LocalDateTime.of(9999, 12, 31, 11, 59, 59, 999).toEpochSecond(ZoneOffset.UTC),
-        response,
-        COOKIE_TYPE.SECURE);
-    createCookie(
-        "hasfgpt",
-        "",
-        LocalDateTime.of(9999, 12, 31, 11, 59, 59, 999).toEpochSecond(ZoneOffset.UTC),
-        response,
-        COOKIE_TYPE.UNSECURE);
-    createCookie(
-        "refreshToken",
-        refreshToken.getToken(),
-        Duration.between(LocalDateTime.now(), refreshToken.getExpireDate().atStartOfDay()).toSeconds(),
-        response,
-        COOKIE_TYPE.SECURE);
-  }
-
-  private void deleteAllCookies(HttpServletResponse response) throws Exception {
-    createCookie("authToken", "", 0, response, COOKIE_TYPE.SECURE);
-    createCookie("fingerprint", "", 0, response, COOKIE_TYPE.SECURE);
-    createCookie("hasfgpt", "", 0, response, COOKIE_TYPE.UNSECURE);
-    createCookie("refreshToken", "", 0, response, COOKIE_TYPE.SECURE);
+  @PostMapping({ "/recover", "/recover/" })
+  public ResponseEntity<Void> sendRecoverEntity(@RequestBody RecoverDTO recoverDTO) {
+    // authService.sendRecoveryEmail(recoverDTO);
+    return ResponseEntity.ok().build();
   }
 
 }

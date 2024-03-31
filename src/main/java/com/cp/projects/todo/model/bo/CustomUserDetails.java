@@ -18,27 +18,19 @@ import lombok.ToString;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class CustomUserDetails extends User implements UserDetails {
-  private String username;
-
-  @ToString.Exclude
-  private String password;
   private Collection<? extends GrantedAuthority> authorities;
   private boolean accountNonExpired;
   private boolean accountNonLocked;
   private boolean credentialsNonExpired;
-  private boolean enabled;
 
   public CustomUserDetails(User user) {
     super(user);
-    this.username = user.getUsername();
-    this.password = user.getPassword();
     List<GrantedAuthority> auths = new ArrayList<>();
-    auths.add(new SimpleGrantedAuthority("admin".toUpperCase()));
+    auths.add(new SimpleGrantedAuthority("all".toUpperCase()));
     this.authorities = auths;
 
     this.accountNonExpired = true;
     this.accountNonLocked = true;
     this.credentialsNonExpired = true;
-    this.enabled = true;
   }
 }

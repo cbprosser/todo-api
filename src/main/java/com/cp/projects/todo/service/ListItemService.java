@@ -1,6 +1,5 @@
 package com.cp.projects.todo.service;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -8,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.cp.projects.todo.model.dto.ToDoListItemDTO;
+import com.cp.projects.todo.model.dto.ToDoListWithItemsDTO;
 import com.cp.projects.todo.model.table.ToDoList;
 import com.cp.projects.todo.model.table.ToDoListItem;
 import com.cp.projects.todo.repo.ListItemRepo;
@@ -21,12 +21,8 @@ public class ListItemService {
   @Autowired
   private ListRepo listRepo;
 
-  public List<ToDoListItem> findAll() {
-    return listItemRepo.findAll();
-  }
-
   @SuppressWarnings("null")
-  public ToDoList getListWithItems(String username, UUID listID) throws Exception {
+  public ToDoListWithItemsDTO getListWithItems(String username, UUID listID) throws Exception {
     Optional<ToDoList> optList = listRepo.findById(listID);
     if (!optList.isPresent())
       throw new Exception("List not found");
@@ -34,7 +30,7 @@ public class ListItemService {
     if (!list.getUser().getUsername().equals(username))
       throw new Exception("Username doesn't match list.");
     list.getItems();
-    return list;
+    return new ToDoListWithItemsDTO(list);
   }
 
   @SuppressWarnings("null")

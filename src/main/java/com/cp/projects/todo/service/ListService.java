@@ -26,10 +26,6 @@ public class ListService {
   @Autowired
   private UserRepo userRepo;
 
-  public List<ToDoListDTO> findAll() {
-    return listRepo.findAll().stream().map(ToDoListDTO::new).toList();
-  }
-
   public List<ToDoListDTO> getToDoListsbyUserUsername(String username) {
     return listRepo.findByUserUsernameEquals(username).stream().map(ToDoListDTO::new).toList();
   }

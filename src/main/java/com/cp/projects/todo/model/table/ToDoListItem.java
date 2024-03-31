@@ -3,6 +3,9 @@ package com.cp.projects.todo.model.table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.Column;
@@ -26,15 +29,16 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 public class ToDoListItem {
-  
+
   @Id
   @GeneratedValue
   private UUID listItemId;
   private String description;
 
+  @Generated(event = EventType.INSERT)
   @Column(insertable = false)
   private LocalDateTime createDate;
-  
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinTable(name = "ae_lists_to_list_items", joinColumns = {
       @JoinColumn(name = "list_item_id")

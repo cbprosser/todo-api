@@ -1,33 +1,29 @@
 package com.cp.projects.todo.model.dto;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.List;
 
 import com.cp.projects.todo.model.table.ToDoList;
 import com.cp.projects.todo.model.table.User;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 @SuperBuilder(toBuilder = true)
-public class ToDoListDTO {
-  protected UUID listId;
-  protected String title;
-  protected String description;
-  protected long count;
-  protected LocalDateTime created;
+public class ToDoListWithItemsDTO extends ToDoListDTO {
+  private List<ToDoListItemDTO> items;
 
-  public ToDoListDTO(ToDoList db) {
-    this.count = db.getListItemsCount();
-    this.description = db.getDescription();
-    this.listId = db.getListId();
-    this.title = db.getTitle();
-    this.created = db.getCreateDate();
+  public ToDoListWithItemsDTO(ToDoList db) {
+    super(db);
+    this.items = db.getItems().stream().map(ToDoListItemDTO::new).toList();
   }
 
   public ToDoList toDBToDoList(User user) {

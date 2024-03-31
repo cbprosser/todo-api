@@ -23,11 +23,6 @@ public class ListController {
   @Autowired
   private ListService listService;
 
-  @GetMapping({ "/", "" })
-  public ResponseEntity<List<ToDoListDTO>> findAll() {
-    return ResponseEntity.ok(listService.findAll());
-  }
-
   @GetMapping({ "/{username}", "/{username}/" })
   public ResponseEntity<List<ToDoListDTO>> getToDoListsbyUserUsername(@PathVariable String username) {
     return ResponseEntity.ok(listService.getToDoListsbyUserUsername(username));
