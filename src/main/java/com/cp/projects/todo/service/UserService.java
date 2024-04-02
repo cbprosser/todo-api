@@ -59,12 +59,15 @@ public class UserService {
   }
 
   @SuppressWarnings("null")
+  @Transactional
   public void verifyUser(UUID token) throws Exception {
-    Optional<VerificationToken> verificationToken = verificationTokenRepo.findByToken(token);
-    if (!verificationToken.isPresent()) {
+    Optional<VerificationToken> optVerificationToken = verificationTokenRepo.findByToken(token);
+    if (!optVerificationToken.isPresent()) {
       throw new Exception("User verification token not found");
     }
-    userRepo.save(verificationToken.get().getUser().toBuilder().enabled(true).build());
+    VerificationToken verificationToken = optVerificationToken.get();
+    userRepo.save(verificationToken.getUser().toBuilder().enabled(true).build());
+    verificationTokenRepo.delete(verificationToken);
   }
 
 }

@@ -35,13 +35,14 @@ public class EmailUtil {
 
   public static void sendConfirmUserEmail(String to, String username, VerificationToken token) {
     sendEmail(EmailOptions.builder()
-        .to(to)
+        // .to(to)
+        .to(emailConfig.getEmail())
         .from(emailConfig.getEmail())
         .subject("ToDoLoo new user confirmation")
         .bodyText(String.format(
             "Hi %s!\n\nThank you for signing up for ToDoLoo! To confirm your email, click this link:\n\n%s",
             username,
-            "http://localhost:8080/v1/users/confirm/" + token.getToken()))
+            "http://localhost:5173/register/" + token.getToken()))
         .build());
   }
 
