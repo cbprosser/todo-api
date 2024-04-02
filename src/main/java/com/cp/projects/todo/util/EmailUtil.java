@@ -46,6 +46,19 @@ public class EmailUtil {
         .build());
   }
 
+  public static void sendRecoveryEmail(VerificationToken token) {
+    sendEmail(EmailOptions.builder()
+        // .to(token.getUser.getEmail())
+        .to(emailConfig.getEmail())
+        .from(emailConfig.getEmail())
+        .subject("ToDoLoo recovery confirmation")
+        .bodyText(String.format(
+            "Hi %s\n\nA request was recently made to recover your account. If this was made in error, please disregard this email. Otherwise, click this link to reset your password:\n\n%s",
+            token.getUser().getUsername(),
+            "http://localhost:5173/forgot/" + token.getToken()))
+        .build());
+  }
+
   @Data
   @Builder(toBuilder = true)
   private static class EmailOptions {
@@ -54,4 +67,5 @@ public class EmailUtil {
     String subject;
     String bodyText;
   }
+
 }

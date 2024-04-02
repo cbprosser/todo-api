@@ -1,6 +1,7 @@
 package com.cp.projects.todo.controller;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -114,9 +116,16 @@ public class AuthController {
     return ResponseEntity.ok().build();
   }
 
-  @PostMapping({ "/recover", "/recover/" })
-  public ResponseEntity<Void> sendRecoverEntity(@RequestBody RecoverDTO recoverDTO) {
-    // authService.sendRecoveryEmail(recoverDTO);
+  @PostMapping({ "/forgot", "/forgot/" })
+  public ResponseEntity<Void> sendRecoveryEmail(@RequestBody RecoverDTO recoverDTO) throws Exception {
+    authService.sendRecoveryEmail(recoverDTO);
+    return ResponseEntity.ok().build();
+  }
+
+  @PostMapping({ "/recover/{token}", "/recover/{token}/" })
+  public ResponseEntity<Void> recoverUser(@PathVariable UUID token, @RequestBody RecoverDTO recoverDTO)
+      throws Exception {
+    authService.recoverUser(token, recoverDTO);
     return ResponseEntity.ok().build();
   }
 

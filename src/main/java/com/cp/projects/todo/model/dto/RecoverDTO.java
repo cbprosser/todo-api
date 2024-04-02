@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class RecoverDTO {
-  private String username;
   private String email;
+  private String password;
 }

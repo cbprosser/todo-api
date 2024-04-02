@@ -9,17 +9,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class UnauthorizedEndpoints {
   private final static String[] UNAUTHORIZED_ENDPOINTS_WITHOUT_SLASHES = new String[] {
-      "/v1/auth/login",
-      "/v1/auth/refresh",
-      "/v1/users/save",
-      "/v1/users/confirm/{token}",
-      "/error"
+    "/v1/auth/login",
+    "/v1/auth/refresh",
+    "/v1/auth/forgot",
+    "/v1/auth/recover/{token}",
+    "/v1/users/save",
+    "/v1/users/confirm/{token}",
+    "/error"
   };
   public final static String[] UNAUTHORIZED_ENDPOINTS = Arrays.stream(UNAUTHORIZED_ENDPOINTS_WITHOUT_SLASHES)
-      .map(endpoint -> new String[] { endpoint, endpoint + "/" })
-      .flatMap(pair -> Arrays.stream(pair))
-      .toArray(String[]::new);
+    .map(endpoint -> new String[] { endpoint, endpoint + "/" })
+    .flatMap(pair -> Arrays.stream(pair))
+    .toArray(String[]::new);
 
   public final static RequestMatcher[] UNAUTHORIZED_ENDPOINT_MATCHERS = Arrays.stream(UNAUTHORIZED_ENDPOINTS)
-      .map(AntPathRequestMatcher::new).toArray(AntPathRequestMatcher[]::new);
+    .map(AntPathRequestMatcher::new).toArray(AntPathRequestMatcher[]::new);
 }

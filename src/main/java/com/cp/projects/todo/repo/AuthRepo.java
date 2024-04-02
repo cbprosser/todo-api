@@ -19,4 +19,6 @@ public interface AuthRepo extends JpaRepository<User, UUID> {
   @Transactional
   @Query(value = "INSERT INTO {h-schema}users (username,password,email) VALUES (?1, crypt(?2,gen_salt('md5')), ?3)", nativeQuery = true)
   public int save(String username, String password, String email);
+
+  public User findUserByEmail(String email);
 }
